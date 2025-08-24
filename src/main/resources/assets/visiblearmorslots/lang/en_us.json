@@ -1,0 +1,20 @@
+{
+  "gui.visiblearmorslots.empty.helmet": "Empty Helmet Slot",
+  "gui.visiblearmorslots.empty.chestplate": "Empty Chestplate Slot", 
+  "gui.visiblearmorslots.empty.leggings": "Empty Leggings Slot",
+  "gui.visiblearmorslots.empty.boots": "Empty Boots Slot",
+  "gui.visiblearmorslots.empty.offhand": "Empty Off-Hand Slot",
+  "config.visiblearmorslots.title": "Visible Armor Slots Configuration",
+  "config.visiblearmorslots.positioning": "Position",
+  "config.visiblearmorslots.positioning.tooltip": "Which side of the screen to show the armor slots on",
+  "config.visiblearmorslots.margin_x": "Horizontal Margin",
+  "config.visiblearmorslots.margin_x.tooltip": "Distance from the edge of the container (0-128 pixels)",
+  "config.visiblearmorslots.margin_y": "Vertical Margin", 
+  "config.visiblearmorslots.margin_y.tooltip": "Vertical offset from default position (-64 to 64 pixels)",
+  "config.visiblearmorslots.enabled": "Enabled",
+  "config.visiblearmorslots.enabled.tooltip": "Enable or disable the visible armor slots overlay",
+  "config.visiblearmorslots.show_tooltips": "Show Tooltips",
+  "config.visiblearmorslots.show_tooltips.tooltip": "Show item tooltips when hovering over armor slots",
+  "config.visiblearmorslots.auto_positioning": "Auto Positioning",
+  "config.visiblearmorslots.auto_positioning.tooltip": "Automatically reposition when potion effects are visible"
+}
