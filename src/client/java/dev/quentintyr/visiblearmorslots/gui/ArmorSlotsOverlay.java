@@ -30,6 +30,15 @@ public class ArmorSlotsOverlay {
     private final List<ArmorSlotWidget> armorSlots = new ArrayList<>();
     private OffhandSlotWidget offhandSlot;
     private int baseX, baseY;
+
+    public int getBaseX() {
+        return baseX;
+    }
+
+    public int getBaseY() {
+        return baseY;
+    }
+
     private boolean visible = false;
 
     // Cache the last known equipment state to detect changes
@@ -38,7 +47,6 @@ public class ArmorSlotsOverlay {
     private ItemStack lastLeggings = ItemStack.EMPTY;
     private ItemStack lastBoots = ItemStack.EMPTY;
     private ItemStack lastOffhand = ItemStack.EMPTY;
-    private boolean needsUpdate = true;
 
     public void initialize(HandledScreen<?> screen) {
         if (!ModConfig.getInstance().isEnabled()) {
@@ -124,36 +132,21 @@ public class ArmorSlotsOverlay {
         ItemStack currentBoots = inventory.getArmorStack(0);
         ItemStack currentOffhand = player.getOffHandStack();
 
-        // Detect changes and log them (temporary debug)
+        // Update cached states for change detection
         if (!ItemStack.areEqual(lastHelmet, currentHelmet)) {
-            System.out.println("HELMET CHANGED: " + lastHelmet.getName().getString() + " -> "
-                    + currentHelmet.getName().getString());
             lastHelmet = currentHelmet.copy();
-            needsUpdate = true;
         }
         if (!ItemStack.areEqual(lastChestplate, currentChestplate)) {
-            System.out.println("CHESTPLATE CHANGED: " + lastChestplate.getName().getString() + " -> "
-                    + currentChestplate.getName().getString());
             lastChestplate = currentChestplate.copy();
-            needsUpdate = true;
         }
         if (!ItemStack.areEqual(lastLeggings, currentLeggings)) {
-            System.out.println("LEGGINGS CHANGED: " + lastLeggings.getName().getString() + " -> "
-                    + currentLeggings.getName().getString());
             lastLeggings = currentLeggings.copy();
-            needsUpdate = true;
         }
         if (!ItemStack.areEqual(lastBoots, currentBoots)) {
-            System.out.println(
-                    "BOOTS CHANGED: " + lastBoots.getName().getString() + " -> " + currentBoots.getName().getString());
             lastBoots = currentBoots.copy();
-            needsUpdate = true;
         }
         if (!ItemStack.areEqual(lastOffhand, currentOffhand)) {
-            System.out.println("OFFHAND CHANGED: " + lastOffhand.getName().getString() + " -> "
-                    + currentOffhand.getName().getString());
             lastOffhand = currentOffhand.copy();
-            needsUpdate = true;
         }
 
         // Draw column background
@@ -247,6 +240,11 @@ public class ArmorSlotsOverlay {
             return true;
         }
 
+        // If click is inside overlay column, block vanilla drop logic
+        if (mouseX >= baseX && mouseX < baseX + 24 && mouseY >= baseY && mouseY < baseY + 100) {
+            return true;
+        }
+
         return false;
     }
 
@@ -283,6 +281,7 @@ public class ArmorSlotsOverlay {
             int hotbarSlot = keyCode - 49;
             // For now, we'll swap with the helmet slot when a number is pressed
             // This could be enhanced to swap with the currently highlighted slot
+            // TODO swapping with helmet
             net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
                     NetworkManager.SLOT_ACTION_PACKET_ID,
                     createPacketByteBuf(ActionType.HOTBAR_SWAP, SlotInfo.SlotType.HELMET.getEquipmentSlot(),
