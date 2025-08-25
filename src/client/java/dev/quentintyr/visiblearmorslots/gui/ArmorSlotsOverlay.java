@@ -32,6 +32,14 @@ public class ArmorSlotsOverlay {
     private int baseX, baseY;
     private boolean visible = false;
 
+    // Cache the last known equipment state to detect changes
+    private ItemStack lastHelmet = ItemStack.EMPTY;
+    private ItemStack lastChestplate = ItemStack.EMPTY;
+    private ItemStack lastLeggings = ItemStack.EMPTY;
+    private ItemStack lastBoots = ItemStack.EMPTY;
+    private ItemStack lastOffhand = ItemStack.EMPTY;
+    private boolean needsUpdate = true;
+
     public void initialize(HandledScreen<?> screen) {
         if (!ModConfig.getInstance().isEnabled()) {
             visible = false;
@@ -106,15 +114,59 @@ public class ArmorSlotsOverlay {
         if (player == null)
             return;
 
+        // Get fresh inventory reference each frame to ensure real-time updates
+        PlayerInventory inventory = player.getInventory();
+
+        // Check for equipment changes and log them
+        ItemStack currentHelmet = inventory.getArmorStack(3);
+        ItemStack currentChestplate = inventory.getArmorStack(2);
+        ItemStack currentLeggings = inventory.getArmorStack(1);
+        ItemStack currentBoots = inventory.getArmorStack(0);
+        ItemStack currentOffhand = player.getOffHandStack();
+
+        // Detect changes and log them (temporary debug)
+        if (!ItemStack.areEqual(lastHelmet, currentHelmet)) {
+            System.out.println("HELMET CHANGED: " + lastHelmet.getName().getString() + " -> "
+                    + currentHelmet.getName().getString());
+            lastHelmet = currentHelmet.copy();
+            needsUpdate = true;
+        }
+        if (!ItemStack.areEqual(lastChestplate, currentChestplate)) {
+            System.out.println("CHESTPLATE CHANGED: " + lastChestplate.getName().getString() + " -> "
+                    + currentChestplate.getName().getString());
+            lastChestplate = currentChestplate.copy();
+            needsUpdate = true;
+        }
+        if (!ItemStack.areEqual(lastLeggings, currentLeggings)) {
+            System.out.println("LEGGINGS CHANGED: " + lastLeggings.getName().getString() + " -> "
+                    + currentLeggings.getName().getString());
+            lastLeggings = currentLeggings.copy();
+            needsUpdate = true;
+        }
+        if (!ItemStack.areEqual(lastBoots, currentBoots)) {
+            System.out.println(
+                    "BOOTS CHANGED: " + lastBoots.getName().getString() + " -> " + currentBoots.getName().getString());
+            lastBoots = currentBoots.copy();
+            needsUpdate = true;
+        }
+        if (!ItemStack.areEqual(lastOffhand, currentOffhand)) {
+            System.out.println("OFFHAND CHANGED: " + lastOffhand.getName().getString() + " -> "
+                    + currentOffhand.getName().getString());
+            lastOffhand = currentOffhand.copy();
+            needsUpdate = true;
+        }
+
         // Draw column background
         drawContext.drawTexture(COLUMN_TEXTURE, baseX, baseY, 0, 0, 24, 100, 24, 100);
 
-        PlayerInventory inventory = player.getInventory();
-
-        // Render armor slots
+        // Render armor slots with fresh data
         for (int i = 0; i < armorSlots.size(); i++) {
             ArmorSlotWidget slot = armorSlots.get(i);
+            // Get current armor stack - this should update in real-time
+            // Try both approaches to ensure we get the most current data
             ItemStack stack = inventory.getArmorStack(3 - i); // Reverse order: helmet=3, boots=0
+
+            // Force refresh by checking if the stack has changed
             slot.render(drawContext, stack, mouseX, mouseY);
 
             // Highlight slot if mouse is over it
@@ -124,7 +176,7 @@ public class ArmorSlotsOverlay {
             }
         }
 
-        // Render offhand slot
+        // Render offhand slot with fresh data
         ItemStack offhandStack = player.getOffHandStack();
         offhandSlot.render(drawContext, offhandStack, mouseX, mouseY);
 
@@ -198,6 +250,28 @@ public class ArmorSlotsOverlay {
         return false;
     }
 
+    private void handleSlotClick(SlotInfo.SlotType slotType, int button, MinecraftClient mc) {
+        if (mc.player == null || mc.currentScreen == null)
+            return;
+
+        boolean isShiftPressed = mc.options.sneakKey.isPressed();
+        boolean isCtrlPressed = mc.options.sprintKey.isPressed();
+
+        ActionType actionType;
+        if (isShiftPressed) {
+            actionType = ActionType.QUICK_TRANSFER;
+        } else {
+            actionType = ActionType.MOUSE_SWAP;
+        }
+
+        // Send packet using the existing networking system
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
+                NetworkManager.SLOT_ACTION_PACKET_ID,
+                createPacketByteBuf(actionType, slotType.getEquipmentSlot(), -1,
+                        isShiftPressed, isCtrlPressed,
+                        mc.player != null && mc.player.getAbilities().creativeMode));
+    }
+
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (!visible)
             return false;
@@ -227,25 +301,6 @@ public class ArmorSlotsOverlay {
         }
 
         return false;
-    }
-
-    private void handleSlotClick(SlotInfo.SlotType slotType, int button, MinecraftClient mc) {
-        boolean isShiftPressed = MinecraftClient.getInstance().options.sneakKey.isPressed();
-        boolean isCtrlPressed = MinecraftClient.getInstance().options.sprintKey.isPressed();
-
-        ActionType actionType;
-        if (isShiftPressed) {
-            actionType = ActionType.QUICK_TRANSFER;
-        } else {
-            actionType = ActionType.MOUSE_SWAP;
-        }
-
-        // Send packet using simple networking
-        net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
-                NetworkManager.SLOT_ACTION_PACKET_ID,
-                createPacketByteBuf(actionType, slotType.getEquipmentSlot(), -1,
-                        isShiftPressed, isCtrlPressed,
-                        mc.player != null && mc.player.getAbilities().creativeMode));
     }
 
     private net.minecraft.network.PacketByteBuf createPacketByteBuf(ActionType actionType,

@@ -22,6 +22,9 @@ public class QuickTransferResolver {
         // Try to move equipped item to main inventory
         if (insertIntoMainInventory(player, equipped)) {
             player.equipStack(targetSlot, ItemStack.EMPTY);
+
+            // Force inventory sync to client
+            player.currentScreenHandler.syncState();
         }
     }
 
