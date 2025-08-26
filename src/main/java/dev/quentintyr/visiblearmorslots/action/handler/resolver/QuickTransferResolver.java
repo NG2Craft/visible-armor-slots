@@ -19,12 +19,22 @@ public class QuickTransferResolver {
         if (equipped.isEmpty())
             return;
 
+        System.out.println("SERVER: Quick transfer for " + targetSlot + " with item " + equipped.getName().getString());
+
         // Try to move equipped item to main inventory
         if (insertIntoMainInventory(player, equipped)) {
             player.equipStack(targetSlot, ItemStack.EMPTY);
 
-            // Force inventory sync to client
+            // Force inventory sync to client - same as MouseSwapResolver
             player.currentScreenHandler.syncState();
+            player.playerScreenHandler.syncState();
+
+            // Force a screen handler refresh to ensure changes are sent to client
+            player.currentScreenHandler.sendContentUpdates();
+
+            System.out.println("SERVER: Successfully transferred item to inventory");
+        } else {
+            System.out.println("SERVER: Failed to transfer - inventory full");
         }
     }
 

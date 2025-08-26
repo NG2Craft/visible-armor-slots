@@ -8,6 +8,7 @@ import dev.quentintyr.visiblearmorslots.mixin.client.HandledScreenAccessor;
 import dev.quentintyr.visiblearmorslots.network.NetworkManager;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.entity.effect.StatusEffects;
@@ -252,14 +253,19 @@ public class ArmorSlotsOverlay {
         if (mc.player == null || mc.currentScreen == null)
             return;
 
-        boolean isShiftPressed = mc.options.sneakKey.isPressed();
-        boolean isCtrlPressed = mc.options.sprintKey.isPressed();
+        boolean isShiftPressed = Screen.hasShiftDown();
+        boolean isCtrlPressed = Screen.hasControlDown();
+
+        System.out.println("handleSlotClick: slot=" + slotType + ", button=" + button + ", shift=" + isShiftPressed
+                + ", ctrl=" + isCtrlPressed);
 
         ActionType actionType;
         if (isShiftPressed) {
             actionType = ActionType.QUICK_TRANSFER;
+            System.out.println("SHIFT-CLICK detected for slot: " + slotType);
         } else {
             actionType = ActionType.MOUSE_SWAP;
+            System.out.println("Normal click for slot: " + slotType);
         }
 
         // Send packet using the existing networking system
