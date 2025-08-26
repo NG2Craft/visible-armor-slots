@@ -32,8 +32,12 @@ public class HotbarSwapResolver {
         player.equipStack(targetSlot, hotbarStack.copy());
         player.getInventory().setStack(hotbarSlot, equipped.copy());
 
-        // Force inventory sync to client
+        // Force inventory sync to client - same pattern as other resolvers
         player.currentScreenHandler.syncState();
+        player.playerScreenHandler.syncState();
+
+        // Force a screen handler refresh to ensure changes are sent to client
+        player.currentScreenHandler.sendContentUpdates();
     }
 
     private static boolean canEquipInSlot(ItemStack stack, EquipmentSlot slot) {

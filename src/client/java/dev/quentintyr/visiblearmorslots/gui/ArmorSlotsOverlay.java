@@ -283,15 +283,37 @@ public class ArmorSlotsOverlay {
         // Handle hotbar swapping (keys 1-9)
         if (keyCode >= 49 && keyCode <= 57) { // GLFW key codes for 1-9
             int hotbarSlot = keyCode - 49;
-            // For now, we'll swap with the helmet slot when a number is pressed
-            // This could be enhanced to swap with the currently highlighted slot
-            // TODO swapping with helmet
-            net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
-                    NetworkManager.SLOT_ACTION_PACKET_ID,
-                    createPacketByteBuf(ActionType.HOTBAR_SWAP, SlotInfo.SlotType.HELMET.getEquipmentSlot(),
-                            hotbarSlot, false, false,
-                            mc.player != null && mc.player.getAbilities().creativeMode));
-            return true;
+
+            // Get mouse position to determine which slot to swap
+            double mouseX = mc.mouse.getX() * (double) mc.getWindow().getScaledWidth()
+                    / (double) mc.getWindow().getWidth();
+            double mouseY = mc.mouse.getY() * (double) mc.getWindow().getScaledHeight()
+                    / (double) mc.getWindow().getHeight();
+
+            // Check which armor slot the mouse is over
+            for (ArmorSlotWidget slot : armorSlots) {
+                if (slot.isMouseOver((int) mouseX, (int) mouseY)) {
+                    System.out.println(
+                            "HOTBAR SWAP requested: " + slot.getSlotType() + " <-> hotbar slot " + (hotbarSlot + 1));
+                    net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
+                            NetworkManager.SLOT_ACTION_PACKET_ID,
+                            createPacketByteBuf(ActionType.HOTBAR_SWAP, slot.getSlotType().getEquipmentSlot(),
+                                    hotbarSlot, false, false,
+                                    mc.player != null && mc.player.getAbilities().creativeMode));
+                    return true;
+                }
+            }
+
+            // Check offhand slot
+            if (offhandSlot.isMouseOver((int) mouseX, (int) mouseY)) {
+                System.out.println("HOTBAR SWAP requested: OFFHAND <-> hotbar slot " + (hotbarSlot + 1));
+                net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
+                        NetworkManager.SLOT_ACTION_PACKET_ID,
+                        createPacketByteBuf(ActionType.HOTBAR_SWAP, SlotInfo.SlotType.OFFHAND.getEquipmentSlot(),
+                                hotbarSlot, false, false,
+                                mc.player != null && mc.player.getAbilities().creativeMode));
+                return true;
+            }
         }
 
         // Handle F key for offhand swap
