@@ -42,13 +42,6 @@ public class ArmorSlotsOverlay {
 
     private boolean visible = false;
 
-    // Cache the last known equipment state to detect changes
-    private ItemStack lastHelmet = ItemStack.EMPTY;
-    private ItemStack lastChestplate = ItemStack.EMPTY;
-    private ItemStack lastLeggings = ItemStack.EMPTY;
-    private ItemStack lastBoots = ItemStack.EMPTY;
-    private ItemStack lastOffhand = ItemStack.EMPTY;
-
     public void initialize(HandledScreen<?> screen) {
         if (!ModConfig.getInstance().isEnabled()) {
             visible = false;
@@ -126,41 +119,13 @@ public class ArmorSlotsOverlay {
         // Get fresh inventory reference each frame to ensure real-time updates
         PlayerInventory inventory = player.getInventory();
 
-        // Check for equipment changes and log them
-        ItemStack currentHelmet = inventory.getArmorStack(3);
-        ItemStack currentChestplate = inventory.getArmorStack(2);
-        ItemStack currentLeggings = inventory.getArmorStack(1);
-        ItemStack currentBoots = inventory.getArmorStack(0);
-        ItemStack currentOffhand = player.getOffHandStack();
-
-        // Update cached states for change detection
-        if (!ItemStack.areEqual(lastHelmet, currentHelmet)) {
-            lastHelmet = currentHelmet.copy();
-        }
-        if (!ItemStack.areEqual(lastChestplate, currentChestplate)) {
-            lastChestplate = currentChestplate.copy();
-        }
-        if (!ItemStack.areEqual(lastLeggings, currentLeggings)) {
-            lastLeggings = currentLeggings.copy();
-        }
-        if (!ItemStack.areEqual(lastBoots, currentBoots)) {
-            lastBoots = currentBoots.copy();
-        }
-        if (!ItemStack.areEqual(lastOffhand, currentOffhand)) {
-            lastOffhand = currentOffhand.copy();
-        }
-
         // Draw column background
         drawContext.drawTexture(COLUMN_TEXTURE, baseX, baseY, 0, 0, 24, 100, 24, 100);
 
         // Render armor slots with fresh data
         for (int i = 0; i < armorSlots.size(); i++) {
             ArmorSlotWidget slot = armorSlots.get(i);
-            // Get current armor stack - this should update in real-time
-            // Try both approaches to ensure we get the most current data
             ItemStack stack = inventory.getArmorStack(3 - i); // Reverse order: helmet=3, boots=0
-
-            // Force refresh by checking if the stack has changed
             slot.render(drawContext, stack, mouseX, mouseY);
 
             // Highlight slot if mouse is over it
