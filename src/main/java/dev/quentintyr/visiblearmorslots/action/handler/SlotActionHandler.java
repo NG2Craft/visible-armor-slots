@@ -1,6 +1,7 @@
 package dev.quentintyr.visiblearmorslots.action.handler;
 
 import dev.quentintyr.visiblearmorslots.action.SlotAction;
+import dev.quentintyr.visiblearmorslots.action.handler.resolver.DropResolver;
 import dev.quentintyr.visiblearmorslots.action.handler.resolver.HotbarSwapResolver;
 import dev.quentintyr.visiblearmorslots.action.handler.resolver.MouseSwapResolver;
 import dev.quentintyr.visiblearmorslots.action.handler.resolver.OffhandSwapResolver;
@@ -18,6 +19,7 @@ public class SlotActionHandler {
             case QUICK_TRANSFER -> QuickTransferResolver.resolve(action, player);
             case HOTBAR_SWAP -> HotbarSwapResolver.resolve(action, player);
             case OFFHAND_SWAP -> OffhandSwapResolver.resolve(action, player);
+            case DROP -> DropResolver.resolve(action, player);
         }
     }
 }

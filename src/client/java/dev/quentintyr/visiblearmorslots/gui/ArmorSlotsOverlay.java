@@ -282,6 +282,39 @@ public class ArmorSlotsOverlay {
 
         MinecraftClient mc = MinecraftClient.getInstance();
 
+        // Handle Q key for dropping armor
+        if (keyCode == 81) { // Q key
+            // Get mouse position to determine which slot to drop
+            double mouseX = mc.mouse.getX() * (double) mc.getWindow().getScaledWidth()
+                    / (double) mc.getWindow().getWidth();
+            double mouseY = mc.mouse.getY() * (double) mc.getWindow().getScaledHeight()
+                    / (double) mc.getWindow().getHeight();
+
+            // Check which slot the mouse is over
+            for (ArmorSlotWidget slot : armorSlots) {
+                if (slot.isMouseOver((int) mouseX, (int) mouseY)) {
+                    System.out.println("DROP requested for slot: " + slot.getSlotType());
+                    net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
+                            NetworkManager.SLOT_ACTION_PACKET_ID,
+                            createPacketByteBuf(ActionType.DROP, slot.getSlotType().getEquipmentSlot(),
+                                    -1, false, false,
+                                    mc.player != null && mc.player.getAbilities().creativeMode));
+                    return true;
+                }
+            }
+
+            // Check offhand slot
+            if (offhandSlot.isMouseOver((int) mouseX, (int) mouseY)) {
+                System.out.println("DROP requested for offhand slot");
+                net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
+                        NetworkManager.SLOT_ACTION_PACKET_ID,
+                        createPacketByteBuf(ActionType.DROP, SlotInfo.SlotType.OFFHAND.getEquipmentSlot(),
+                                -1, false, false,
+                                mc.player != null && mc.player.getAbilities().creativeMode));
+                return true;
+            }
+        }
+
         // Handle hotbar swapping (keys 1-9)
         if (keyCode >= 49 && keyCode <= 57) { // GLFW key codes for 1-9
             int hotbarSlot = keyCode - 49;
