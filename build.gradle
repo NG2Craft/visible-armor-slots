@@ -49,6 +49,15 @@ processResources {
 	}
 }
 
+// Ensure client resources also expand ${version} in fabric.mod.json when using split source sets
+tasks.named("processClientResources") {
+	inputs.property "version", project.version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": inputs.properties.version
+	}
+}
+
 tasks.withType(JavaCompile).configureEach {
 	it.options.release = 17
 }
