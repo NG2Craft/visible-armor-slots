@@ -17,14 +17,14 @@ public class MouseSwapResolver {
         if (targetSlot == null)
             return;
 
-        // Get current item in equipment slot
-        ItemStack currentEquipped = player.getEquippedStack(targetSlot);
+    // Get current item in equipment slot (supports OFFHAND too)
+    ItemStack currentEquipped = player.getEquippedStack(targetSlot);
 
         // Get cursor item
         ItemStack cursorStack = player.currentScreenHandler.getCursorStack();
 
-        // Validate that the cursor item can be equipped in this slot
-        if (!canEquipInSlot(cursorStack, targetSlot)) {
+    // Validate that the cursor item can be equipped in this slot
+    if (!canEquipInSlot(cursorStack, targetSlot)) {
             return; // Invalid item for this slot - do nothing
         }
 
@@ -46,8 +46,8 @@ public class MouseSwapResolver {
             return armorItem.getSlotType() == slot;
         }
 
-        // Allow non-armor items only in offhand
-        return slot == EquipmentSlot.OFFHAND;
+    // Allow any item in offhand
+    return slot == EquipmentSlot.OFFHAND;
     }
 
     private static void handleCreativeSwap(ServerPlayerEntity player, EquipmentSlot slot,

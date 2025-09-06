@@ -68,25 +68,20 @@ public class ArmorSlotsOverlay {
 
         ModConfig config = ModConfig.getInstance();
 
-        // Handle potion effects auto-positioning
-        if (config.isAutoPositioning()) {
-            MinecraftClient mc = MinecraftClient.getInstance();
-            PlayerEntity player = mc.player;
-            if (player != null && player.hasStatusEffect(StatusEffects.REGENERATION)) {
-                // Shift further left when potion effects are visible
-                baseX = screenLeft - 28 - 24;
-            } else {
-                baseX = screenLeft - 28;
-            }
-        } else {
-            baseX = screenLeft - 28;
-        }
-
-        // Apply configuration margins and positioning
+        // Start from the chosen side, then apply margins and any auto offset
         if (config.getPositioning() == ModConfig.Side.RIGHT) {
             baseX = screenLeft + accessor.getBackgroundWidth() + config.getMarginX();
         } else {
             baseX = screenLeft - 28 - config.getMarginX();
+
+            // Optional extra shift to avoid potion effects overlay (left side only)
+            if (config.isAutoPositioning()) {
+                MinecraftClient mc = MinecraftClient.getInstance();
+                PlayerEntity player = mc.player;
+                if (player != null && player.hasStatusEffect(StatusEffects.REGENERATION)) {
+                    baseX -= 24; // shift further left
+                }
+            }
         }
 
         baseY = screenTop + screenHeight - 104 + config.getMarginY();
@@ -316,11 +311,11 @@ public class ArmorSlotsOverlay {
             }
         }
 
-        // Handle F key for offhand swap
-        if (keyCode == 70) { // F key
+    // Handle F key for offhand swap
+    if (keyCode == 70) { // F key
             net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
                     NetworkManager.SLOT_ACTION_PACKET_ID,
-                    createPacketByteBuf(ActionType.OFFHAND_SWAP, null, -1, false, false,
+            createPacketByteBuf(ActionType.OFFHAND_SWAP, SlotInfo.SlotType.OFFHAND.getEquipmentSlot(), -1, false, false,
                             mc.player != null && mc.player.getAbilities().creativeMode));
             return true;
         }

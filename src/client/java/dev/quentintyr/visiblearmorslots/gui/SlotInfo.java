@@ -12,7 +12,7 @@ public class SlotInfo {
         CHESTPLATE(EquipmentSlot.CHEST, 38),
         LEGGINGS(EquipmentSlot.LEGS, 37),
         BOOTS(EquipmentSlot.FEET, 36),
-        OFFHAND(null, 40);
+    OFFHAND(EquipmentSlot.OFFHAND, 40);
         
         private final EquipmentSlot equipmentSlot;
         private final int inventoryIndex;

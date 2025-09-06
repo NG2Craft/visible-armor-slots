@@ -18,7 +18,9 @@ public class OffhandSwapResolver {
         player.setStackInHand(net.minecraft.util.Hand.MAIN_HAND, offHand);
         player.setStackInHand(net.minecraft.util.Hand.OFF_HAND, mainHand);
 
-        // Force inventory sync to client
-        player.currentScreenHandler.syncState();
+    // Force inventory sync to client (match other resolvers)
+    player.currentScreenHandler.syncState();
+    player.playerScreenHandler.syncState();
+    player.currentScreenHandler.sendContentUpdates();
     }
 }
