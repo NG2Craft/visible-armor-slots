@@ -25,12 +25,15 @@ import java.util.List;
  * Enhanced armor slots overlay system
  */
 public class ArmorSlotsOverlay {
-    private static final Identifier COLUMN_TEXTURE = new Identifier("visiblearmorslots",
+    private static final Identifier COLUMN_TEXTURE_FULL = new Identifier("visiblearmorslots",
             "textures/gui/extra-slots.png");
+    private static final Identifier COLUMN_TEXTURE_COMPACT = new Identifier("visiblearmorslots",
+            "textures/gui/extra-slots-no-second-hand.png");
 
     private final List<ArmorSlotWidget> armorSlots = new ArrayList<>();
     private OffhandSlotWidget offhandSlot;
     private int baseX, baseY;
+    private int columnHeight = 100; // 100 with offhand, 78 without
 
     public int getBaseX() {
         return baseX;
@@ -54,8 +57,20 @@ public class ArmorSlotsOverlay {
             return;
         }
 
-        visible = true;
+        // Respect allowed container whitelist (use screen handler type registry id if
+        // available)
+        try {
+            net.minecraft.screen.ScreenHandlerType<?> type = screen.getScreenHandler().getType();
+            Identifier handlerId = net.minecraft.registry.Registries.SCREEN_HANDLER.getId(type);
+            if (handlerId != null && !ModConfig.getInstance().isContainerAllowed(handlerId)) {
+                visible = false;
+                return;
+            }
+        } catch (Throwable ignored) {
+        }
 
+        visible = true;
+        columnHeight = ModConfig.getInstance().isShowOffhandSlot() ? 100 : 78;
         calculatePosition(screen);
         createSlots();
     }
@@ -84,7 +99,12 @@ public class ArmorSlotsOverlay {
             }
         }
 
-        baseY = screenTop + screenHeight - 104 + config.getMarginY();
+        // Bottom-align the column regardless of whether the offhand slot is shown.
+        // Full column height (with offhand) is 100; compact is 78. We always keep a
+        // 4px padding from the bottom (matching previous logic: 104 = 100 + 4).
+        // Using (columnHeight + 4) keeps the bottom edge consistent when the height
+        // changes.
+        baseY = screenTop + screenHeight - (columnHeight + 4) + config.getMarginY();
     }
 
     private void createSlots() {
@@ -98,8 +118,12 @@ public class ArmorSlotsOverlay {
         armorSlots.add(new ArmorSlotWidget(SlotInfo.SlotType.LEGGINGS, itemX, baseY + 40));
         armorSlots.add(new ArmorSlotWidget(SlotInfo.SlotType.BOOTS, itemX, baseY + 58));
 
-        // Create offhand slot
-        offhandSlot = new OffhandSlotWidget(itemX, baseY + 80);
+        // Create offhand slot only if enabled in config
+        if (ModConfig.getInstance().isShowOffhandSlot()) {
+            offhandSlot = new OffhandSlotWidget(itemX, baseY + 80);
+        } else {
+            offhandSlot = null;
+        }
     }
 
     public void render(DrawContext drawContext, int mouseX, int mouseY, float delta) {
@@ -114,8 +138,11 @@ public class ArmorSlotsOverlay {
         // Get fresh inventory reference each frame to ensure real-time updates
         PlayerInventory inventory = player.getInventory();
 
-        // Draw column background
-        drawContext.drawTexture(COLUMN_TEXTURE, baseX, baseY, 0, 0, 24, 100, 24, 100);
+        // Draw column background (choose texture based on offhand visibility)
+        boolean offhandShown = offhandSlot != null;
+        Identifier tex = offhandShown ? COLUMN_TEXTURE_FULL : COLUMN_TEXTURE_COMPACT;
+        int texHeight = offhandShown ? 100 : 78;
+        drawContext.drawTexture(tex, baseX, baseY, 0, 0, 24, texHeight, 24, texHeight);
 
         // Render armor slots with fresh data
         for (int i = 0; i < armorSlots.size(); i++) {
@@ -130,14 +157,16 @@ public class ArmorSlotsOverlay {
             }
         }
 
-        // Render offhand slot with fresh data
-        ItemStack offhandStack = player.getOffHandStack();
-        offhandSlot.render(drawContext, offhandStack, mouseX, mouseY);
+        // Render offhand slot with fresh data if enabled
+        if (offhandSlot != null) {
+            ItemStack offhandStack = player.getOffHandStack();
+            offhandSlot.render(drawContext, offhandStack, mouseX, mouseY);
 
-        if (offhandSlot.isMouseOver(mouseX, mouseY)) {
-            drawContext.fill(offhandSlot.getX(), offhandSlot.getY(),
-                    offhandSlot.getX() + 16, offhandSlot.getY() + 16,
-                    0x80FFFFFF);
+            if (offhandSlot.isMouseOver(mouseX, mouseY)) {
+                drawContext.fill(offhandSlot.getX(), offhandSlot.getY(),
+                        offhandSlot.getX() + 16, offhandSlot.getY() + 16,
+                        0x80FFFFFF);
+            }
         }
     }
 
@@ -170,7 +199,7 @@ public class ArmorSlotsOverlay {
         }
 
         // Check offhand slot
-        if (offhandSlot.isMouseOver(mouseX, mouseY)) {
+        if (offhandSlot != null && offhandSlot.isMouseOver(mouseX, mouseY)) {
             ItemStack offhandStack = player.getOffHandStack();
             if (!offhandStack.isEmpty()) {
                 drawContext.drawItemTooltip(mc.textRenderer, offhandStack, mouseX, mouseY);
@@ -196,13 +225,13 @@ public class ArmorSlotsOverlay {
         }
 
         // Check offhand slot
-        if (offhandSlot.isMouseOver((int) mouseX, (int) mouseY)) {
+        if (offhandSlot != null && offhandSlot.isMouseOver((int) mouseX, (int) mouseY)) {
             handleSlotClick(SlotInfo.SlotType.OFFHAND, button, mc);
             return true;
         }
 
         // If click is inside overlay column, block vanilla drop logic
-        if (mouseX >= baseX && mouseX < baseX + 24 && mouseY >= baseY && mouseY < baseY + 100) {
+        if (mouseX >= baseX && mouseX < baseX + 24 && mouseY >= baseY && mouseY < baseY + columnHeight) {
             return true;
         }
 
@@ -264,7 +293,7 @@ public class ArmorSlotsOverlay {
             }
 
             // Check offhand slot
-            if (offhandSlot.isMouseOver((int) mouseX, (int) mouseY)) {
+            if (offhandSlot != null && offhandSlot.isMouseOver((int) mouseX, (int) mouseY)) {
                 System.out.println("DROP requested for offhand slot");
                 net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
                         NetworkManager.SLOT_ACTION_PACKET_ID,
@@ -300,7 +329,7 @@ public class ArmorSlotsOverlay {
             }
 
             // Check offhand slot
-            if (offhandSlot.isMouseOver((int) mouseX, (int) mouseY)) {
+            if (offhandSlot != null && offhandSlot.isMouseOver((int) mouseX, (int) mouseY)) {
                 System.out.println("HOTBAR SWAP requested: OFFHAND <-> hotbar slot " + (hotbarSlot + 1));
                 net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
                         NetworkManager.SLOT_ACTION_PACKET_ID,
@@ -311,11 +340,12 @@ public class ArmorSlotsOverlay {
             }
         }
 
-    // Handle F key for offhand swap
-    if (keyCode == 70) { // F key
+        // Handle F key for offhand swap
+        if (keyCode == 70 && offhandSlot != null) { // F key
             net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
                     NetworkManager.SLOT_ACTION_PACKET_ID,
-            createPacketByteBuf(ActionType.OFFHAND_SWAP, SlotInfo.SlotType.OFFHAND.getEquipmentSlot(), -1, false, false,
+                    createPacketByteBuf(ActionType.OFFHAND_SWAP, SlotInfo.SlotType.OFFHAND.getEquipmentSlot(), -1,
+                            false, false,
                             mc.player != null && mc.player.getAbilities().creativeMode));
             return true;
         }
