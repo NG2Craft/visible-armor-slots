@@ -8,20 +8,24 @@ import net.minecraft.client.gui.screen.ingame.HandledScreen;
 
 public class VisiblearmorslotsClient implements ClientModInitializer {
     private static ArmorSlotsOverlay armorSlotsOverlay;
-    
+
     @Override
     public void onInitializeClient() {
         Visiblearmorslots.LOGGER.info("Visible Armor Slots Client initializing...");
-        
+
+        // Load (or create) JSON config
+        ModConfig.load();
+        ModConfig.save(); // ensure file exists with defaults if first run
+
         // Initialize overlay
         armorSlotsOverlay = new ArmorSlotsOverlay();
-        
+
         // Register screen events
         registerScreenEvents();
-        
+
         Visiblearmorslots.LOGGER.info("Visible Armor Slots Client initialized!");
     }
-    
+
     private void registerScreenEvents() {
         // Initialize overlay when screen opens
         ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
@@ -30,7 +34,7 @@ public class VisiblearmorslotsClient implements ClientModInitializer {
             }
         });
     }
-    
+
     public static ArmorSlotsOverlay getArmorSlotsOverlay() {
         return armorSlotsOverlay;
     }
