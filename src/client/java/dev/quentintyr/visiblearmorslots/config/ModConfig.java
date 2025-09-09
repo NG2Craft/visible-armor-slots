@@ -12,9 +12,7 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Configuration options for the mod (JSON-backed)
@@ -32,7 +30,13 @@ public class ModConfig {
     private boolean showTooltips = true;
     private boolean autoPositioning = true; // Auto-reposition with potion effects
     private boolean showOffhandSlot = true; // New: toggle offhand slot
-    private Set<String> allowedContainers = new HashSet<>(); // registry ids of container screen handlers
+    // Raw values exactly as written in the JSON (block ids or handler ids)
+    private Set<String> allowedContainers = new HashSet<>();
+    // Expanded set of actual screen handler ids derived from user friendly entries
+    private final Set<String> expandedAllowed = new HashSet<>();
+
+    // Mapping of common block ids -> one or more screen handler registry ids
+    private static final Map<String, List<String>> BLOCK_TO_HANDLERS = createBlockToHandlerMappings();
 
     private static final String FILE_NAME = "visiblearmorslots.json";
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -48,14 +52,14 @@ public class ModConfig {
     }
 
     private ModConfig() {
-        // Provide some sensible defaults for allowed containers (player can edit)
+        // User-friendly defaults (block names) instead of opaque screen handler ids
         Collections.addAll(allowedContainers,
                 "minecraft:crafting_table",
                 "minecraft:anvil",
                 "minecraft:enchanting_table",
                 "minecraft:chest",
-                "minecraft:barrel",
                 "minecraft:trapped_chest",
+                "minecraft:barrel",
                 "minecraft:furnace",
                 "minecraft:blast_furnace",
                 "minecraft:smoker",
@@ -67,6 +71,7 @@ public class ModConfig {
                 "minecraft:hopper",
                 "minecraft:brewing_stand",
                 "minecraft:shulker_box");
+        rebuildExpanded();
     }
 
     /* ================= Getters ================= */
@@ -134,7 +139,8 @@ public class ModConfig {
     public boolean isContainerAllowed(Identifier id) {
         if (allowedContainers.isEmpty())
             return true; // empty means allow all
-        return allowedContainers.contains(id.toString());
+        // Direct match (user already put handler id) or expanded match
+        return allowedContainers.contains(id.toString()) || expandedAllowed.contains(id.toString());
     }
 
     /* ================= Persistence ================= */
@@ -173,6 +179,7 @@ public class ModConfig {
                 JsonArray arr = root.getAsJsonArray("allowedContainers");
                 arr.forEach(e -> cfg.allowedContainers.add(e.getAsString()));
             }
+            cfg.rebuildExpanded();
         } catch (IOException e) {
             // ignore: keep defaults if read fails
         }
@@ -195,6 +202,42 @@ public class ModConfig {
         try (Writer writer = Files.newBufferedWriter(path)) {
             GSON.toJson(root, writer);
         } catch (IOException ignored) {
+        }
+    }
+
+    private static Map<String, List<String>> createBlockToHandlerMappings() {
+        Map<String, List<String>> map = new HashMap<>();
+        map.put("minecraft:crafting_table", List.of("minecraft:crafting"));
+        map.put("minecraft:enchanting_table", List.of("minecraft:enchantment"));
+        map.put("minecraft:smithing_table", List.of("minecraft:smithing"));
+        map.put("minecraft:cartography_table", List.of("minecraft:cartography"));
+        map.put("minecraft:stonecutter", List.of("minecraft:stonecutter"));
+        map.put("minecraft:grindstone", List.of("minecraft:grindstone"));
+        map.put("minecraft:loom", List.of("minecraft:loom"));
+        map.put("minecraft:brewing_stand", List.of("minecraft:brewing_stand"));
+        map.put("minecraft:hopper", List.of("minecraft:hopper"));
+        map.put("minecraft:furnace", List.of("minecraft:furnace"));
+        map.put("minecraft:blast_furnace", List.of("minecraft:blast_furnace"));
+        map.put("minecraft:smoker", List.of("minecraft:smoker"));
+        map.put("minecraft:anvil", List.of("minecraft:anvil"));
+        map.put("minecraft:shulker_box", List.of("minecraft:shulker_box"));
+        // Chest-like legacy names -> multiple generic sizes
+        map.put("minecraft:chest", List.of("minecraft:generic_9x3", "minecraft:generic_9x6"));
+        map.put("minecraft:trapped_chest", List.of("minecraft:generic_9x3", "minecraft:generic_9x6"));
+        map.put("minecraft:barrel", List.of("minecraft:generic_9x3"));
+        return map;
+    }
+
+    private void rebuildExpanded() {
+        expandedAllowed.clear();
+        for (String raw : allowedContainers) {
+            // Always allow the raw string itself (covers direct handler ids and modded
+            // ones)
+            expandedAllowed.add(raw);
+            List<String> mapped = BLOCK_TO_HANDLERS.get(raw);
+            if (mapped != null) {
+                expandedAllowed.addAll(mapped);
+            }
         }
     }
 }
