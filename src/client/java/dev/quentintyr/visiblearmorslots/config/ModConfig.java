@@ -60,16 +60,8 @@ public class ModConfig {
                 "minecraft:chest",
                 "minecraft:trapped_chest",
                 "minecraft:barrel",
-                "minecraft:furnace",
-                "minecraft:blast_furnace",
-                "minecraft:smoker",
                 "minecraft:grindstone",
-                "minecraft:cartography_table",
-                "minecraft:loom",
                 "minecraft:smithing_table",
-                "minecraft:stonecutter",
-                "minecraft:hopper",
-                "minecraft:brewing_stand",
                 "minecraft:shulker_box");
         rebuildExpanded();
     }
