@@ -5,7 +5,9 @@ import dev.quentintyr.visiblearmorslots.gui.ArmorSlotsOverlay;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
+import net.minecraft.client.gui.screen.recipebook.RecipeBookProvider;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -14,9 +16,53 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(HandledScreen.class)
 public class HandledScreenMixin {
 
-    @Inject(method = "render", at = @At("RETURN"))
+    @Unique
+    private Boolean vas$lastRecipeOpen = null;
+
+    @Unique
+    private boolean vas$isRecipeBookOpen() {
+        Object self = this;
+        // Preferred: use the mapped interface when available (stable under remap)
+        if (self instanceof RecipeBookProvider provider) {
+            try {
+                return provider.getRecipeBookWidget().isOpen();
+            } catch (Throwable ignored) {
+            }
+        }
+        // Fallback: reflection for unexpected screens that expose the widget
+        try {
+            // Try calling getRecipeBookWidget().isOpen() via reflection
+            java.lang.reflect.Method getWidget = self.getClass().getMethod("getRecipeBookWidget");
+            Object widget = getWidget.invoke(self);
+            if (widget != null) {
+                java.lang.reflect.Method isOpen = widget.getClass().getMethod("isOpen");
+                Object result = isOpen.invoke(widget);
+                if (result instanceof Boolean b)
+                    return b;
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
+    @Inject(method = "render(Lnet/minecraft/client/gui/DrawContext;IIF)V", at = @At("RETURN"))
     private void onRender(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if ((Object) this instanceof InventoryScreen) {
+            return;
+        }
+
+        // Refresh overlay when recipe book toggles
+        boolean openNow = vas$isRecipeBookOpen();
+        if (vas$lastRecipeOpen == null || vas$lastRecipeOpen != openNow) {
+            vas$lastRecipeOpen = openNow;
+            ArmorSlotsOverlay overlayRef = VisiblearmorslotsClient.getArmorSlotsOverlay();
+            if (overlayRef != null) {
+                overlayRef.initialize((HandledScreen<?>) (Object) this);
+            }
+        }
+
+        // Do not render overlay while recipe book is open
+        if (openNow) {
             return;
         }
 
@@ -33,6 +79,11 @@ public class HandledScreenMixin {
             return;
         }
 
+        // While recipe book is open, ignore overlay interactions
+        if (vas$isRecipeBookOpen()) {
+            return;
+        }
+
         ArmorSlotsOverlay overlay = VisiblearmorslotsClient.getArmorSlotsOverlay();
         if (overlay != null && overlay.mouseClicked(mouseX, mouseY, button)) {
             cir.setReturnValue(true);
@@ -43,6 +94,10 @@ public class HandledScreenMixin {
     @Inject(method = "mouseReleased", at = @At("HEAD"), cancellable = true)
     private void onMouseReleased(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
         if ((Object) this instanceof InventoryScreen) {
+            return;
+        }
+
+        if (vas$isRecipeBookOpen()) {
             return;
         }
 
@@ -60,6 +115,10 @@ public class HandledScreenMixin {
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
     private void onKeyPressed(int keyCode, int scanCode, int modifiers, CallbackInfoReturnable<Boolean> cir) {
         if ((Object) this instanceof InventoryScreen) {
+            return;
+        }
+
+        if (vas$isRecipeBookOpen()) {
             return;
         }
 
