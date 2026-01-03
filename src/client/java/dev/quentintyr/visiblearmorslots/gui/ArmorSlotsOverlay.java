@@ -5,7 +5,8 @@ import dev.quentintyr.visiblearmorslots.config.ModConfig;
 import dev.quentintyr.visiblearmorslots.gui.widget.ArmorSlotWidget;
 import dev.quentintyr.visiblearmorslots.gui.widget.OffhandSlotWidget;
 import dev.quentintyr.visiblearmorslots.mixin.client.HandledScreenAccessor;
-import dev.quentintyr.visiblearmorslots.network.NetworkManager;
+import dev.quentintyr.visiblearmorslots.network.SlotActionPayload;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -25,10 +26,10 @@ import java.util.List;
  * Enhanced armor slots overlay system
  */
 public class ArmorSlotsOverlay {
-    private static final Identifier COLUMN_TEXTURE_FULL = new Identifier("visiblearmorslots",
-            "textures/gui/extra-slots.png");
-    private static final Identifier COLUMN_TEXTURE_COMPACT = new Identifier("visiblearmorslots",
-            "textures/gui/extra-slots-no-second-hand.png");
+    private static final Identifier COLUMN_TEXTURE_FULL = Identifier.of(
+            "visiblearmorslots:textures/gui/extra-slots.png");
+    private static final Identifier COLUMN_TEXTURE_COMPACT = Identifier.of(
+            "visiblearmorslots:textures/gui/extra-slots-no-second-hand.png");
 
     private final List<ArmorSlotWidget> armorSlots = new ArrayList<>();
     private OffhandSlotWidget offhandSlot;
@@ -245,24 +246,20 @@ public class ArmorSlotsOverlay {
         boolean isShiftPressed = Screen.hasShiftDown();
         boolean isCtrlPressed = Screen.hasControlDown();
 
-        System.out.println("handleSlotClick: slot=" + slotType + ", button=" + button + ", shift=" + isShiftPressed
-                + ", ctrl=" + isCtrlPressed);
+        ActionType actionType = isShiftPressed ? ActionType.QUICK_TRANSFER : ActionType.MOUSE_SWAP;
+        sendSlotAction(actionType, slotType.getEquipmentSlot(), -1, isShiftPressed, isCtrlPressed);
+    }
 
-        ActionType actionType;
-        if (isShiftPressed) {
-            actionType = ActionType.QUICK_TRANSFER;
-            System.out.println("SHIFT-CLICK detected for slot: " + slotType);
-        } else {
-            actionType = ActionType.MOUSE_SWAP;
-            System.out.println("Normal click for slot: " + slotType);
-        }
+    private void sendSlotAction(ActionType actionType, net.minecraft.entity.EquipmentSlot targetSlot,
+            int hotbarSlot, boolean isShiftPressed, boolean isCtrlPressed) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        boolean isCreative = mc.player != null && mc.player.getAbilities().creativeMode;
 
-        // Send packet using the existing networking system
-        net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
-                NetworkManager.SLOT_ACTION_PACKET_ID,
-                createPacketByteBuf(actionType, slotType.getEquipmentSlot(), -1,
-                        isShiftPressed, isCtrlPressed,
-                        mc.player != null && mc.player.getAbilities().creativeMode));
+        SlotActionPayload payload = new SlotActionPayload(
+                actionType, targetSlot, hotbarSlot,
+                isShiftPressed, isCtrlPressed, isCreative);
+
+        ClientPlayNetworking.send(payload);
     }
 
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
@@ -282,24 +279,14 @@ public class ArmorSlotsOverlay {
             // Check which slot the mouse is over
             for (ArmorSlotWidget slot : armorSlots) {
                 if (slot.isMouseOver((int) mouseX, (int) mouseY)) {
-                    System.out.println("DROP requested for slot: " + slot.getSlotType());
-                    net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
-                            NetworkManager.SLOT_ACTION_PACKET_ID,
-                            createPacketByteBuf(ActionType.DROP, slot.getSlotType().getEquipmentSlot(),
-                                    -1, false, false,
-                                    mc.player != null && mc.player.getAbilities().creativeMode));
+                    sendSlotAction(ActionType.DROP, slot.getSlotType().getEquipmentSlot(), -1, false, false);
                     return true;
                 }
             }
 
             // Check offhand slot
             if (offhandSlot != null && offhandSlot.isMouseOver((int) mouseX, (int) mouseY)) {
-                System.out.println("DROP requested for offhand slot");
-                net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
-                        NetworkManager.SLOT_ACTION_PACKET_ID,
-                        createPacketByteBuf(ActionType.DROP, SlotInfo.SlotType.OFFHAND.getEquipmentSlot(),
-                                -1, false, false,
-                                mc.player != null && mc.player.getAbilities().creativeMode));
+                sendSlotAction(ActionType.DROP, SlotInfo.SlotType.OFFHAND.getEquipmentSlot(), -1, false, false);
                 return true;
             }
         }
@@ -317,60 +304,27 @@ public class ArmorSlotsOverlay {
             // Check which armor slot the mouse is over
             for (ArmorSlotWidget slot : armorSlots) {
                 if (slot.isMouseOver((int) mouseX, (int) mouseY)) {
-                    System.out.println(
-                            "HOTBAR SWAP requested: " + slot.getSlotType() + " <-> hotbar slot " + (hotbarSlot + 1));
-                    net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
-                            NetworkManager.SLOT_ACTION_PACKET_ID,
-                            createPacketByteBuf(ActionType.HOTBAR_SWAP, slot.getSlotType().getEquipmentSlot(),
-                                    hotbarSlot, false, false,
-                                    mc.player != null && mc.player.getAbilities().creativeMode));
+                    sendSlotAction(ActionType.HOTBAR_SWAP, slot.getSlotType().getEquipmentSlot(), hotbarSlot, false,
+                            false);
                     return true;
                 }
             }
 
             // Check offhand slot
             if (offhandSlot != null && offhandSlot.isMouseOver((int) mouseX, (int) mouseY)) {
-                System.out.println("HOTBAR SWAP requested: OFFHAND <-> hotbar slot " + (hotbarSlot + 1));
-                net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
-                        NetworkManager.SLOT_ACTION_PACKET_ID,
-                        createPacketByteBuf(ActionType.HOTBAR_SWAP, SlotInfo.SlotType.OFFHAND.getEquipmentSlot(),
-                                hotbarSlot, false, false,
-                                mc.player != null && mc.player.getAbilities().creativeMode));
+                sendSlotAction(ActionType.HOTBAR_SWAP, SlotInfo.SlotType.OFFHAND.getEquipmentSlot(), hotbarSlot, false,
+                        false);
                 return true;
             }
         }
 
         // Handle F key for offhand swap
         if (keyCode == 70 && offhandSlot != null) { // F key
-            net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.send(
-                    NetworkManager.SLOT_ACTION_PACKET_ID,
-                    createPacketByteBuf(ActionType.OFFHAND_SWAP, SlotInfo.SlotType.OFFHAND.getEquipmentSlot(), -1,
-                            false, false,
-                            mc.player != null && mc.player.getAbilities().creativeMode));
+            sendSlotAction(ActionType.OFFHAND_SWAP, SlotInfo.SlotType.OFFHAND.getEquipmentSlot(), -1, false, false);
             return true;
         }
 
         return false;
-    }
-
-    private net.minecraft.network.PacketByteBuf createPacketByteBuf(ActionType actionType,
-            net.minecraft.entity.EquipmentSlot targetSlot,
-            int hotbarSlot,
-            boolean isShiftPressed,
-            boolean isCtrlPressed,
-            boolean isCreativeMode) {
-        net.minecraft.network.PacketByteBuf buf = new net.minecraft.network.PacketByteBuf(
-                io.netty.buffer.Unpooled.buffer());
-        buf.writeEnumConstant(actionType);
-        buf.writeBoolean(targetSlot != null);
-        if (targetSlot != null) {
-            buf.writeEnumConstant(targetSlot);
-        }
-        buf.writeVarInt(hotbarSlot);
-        buf.writeBoolean(isShiftPressed);
-        buf.writeBoolean(isCtrlPressed);
-        buf.writeBoolean(isCreativeMode);
-        return buf;
     }
 
     public boolean isVisible() {
