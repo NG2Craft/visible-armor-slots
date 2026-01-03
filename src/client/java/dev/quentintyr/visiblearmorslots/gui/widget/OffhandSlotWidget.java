@@ -11,14 +11,15 @@ import net.minecraft.util.Identifier;
 public class OffhandSlotWidget {
     private final int x;
     private final int y;
-    
-    private static final Identifier EMPTY_OFFHAND_SLOT = new Identifier("minecraft", "textures/item/empty_armor_slot_shield.png");
-    
+
+        private static final Identifier EMPTY_OFFHAND_SLOT = Identifier.of(
+            "minecraft:textures/item/empty_armor_slot_shield.png");
+
     public OffhandSlotWidget(int x, int y) {
         this.x = x;
         this.y = y;
     }
-    
+
     public void render(DrawContext context, ItemStack stack, int mouseX, int mouseY) {
         if (stack.isEmpty()) {
             // Draw shield icon for empty off-hand slot
@@ -29,24 +30,24 @@ public class OffhandSlotWidget {
             context.drawItemInSlot(net.minecraft.client.MinecraftClient.getInstance().textRenderer, stack, x, y);
         }
     }
-    
+
     public boolean canAcceptItem(ItemStack stack) {
         // Off-hand has no item type restrictions
         return true;
     }
-    
+
     public boolean isMouseOver(int mouseX, int mouseY) {
         return mouseX >= x && mouseX < x + 16 && mouseY >= y && mouseY < y + 16;
     }
-    
+
     public int getX() {
         return x;
     }
-    
+
     public int getY() {
         return y;
     }
-    
+
     public SlotInfo.SlotType getSlotType() {
         return SlotInfo.SlotType.OFFHAND;
     }
