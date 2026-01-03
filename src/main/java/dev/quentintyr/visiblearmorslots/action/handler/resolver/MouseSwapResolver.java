@@ -1,6 +1,6 @@
 package dev.quentintyr.visiblearmorslots.action.handler.resolver;
 
-import dev.quentintyr.visiblearmorslots.action.SlotAction;
+import dev.quentintyr.visiblearmorslots.network.SlotActionPayload;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ArmorItem;
 import net.minecraft.item.ItemStack;
@@ -12,28 +12,24 @@ import net.minecraft.screen.PlayerScreenHandler;
  */
 public class MouseSwapResolver {
 
-    public static void resolve(SlotAction action, ServerPlayerEntity player) {
-        EquipmentSlot targetSlot = action.getTargetSlot();
+    public static void resolve(SlotActionPayload action, ServerPlayerEntity player) {
+        EquipmentSlot targetSlot = action.targetSlot();
         if (targetSlot == null)
             return;
 
-    // Get current item in equipment slot (supports OFFHAND too)
-    ItemStack currentEquipped = player.getEquippedStack(targetSlot);
+        // Get current item in equipment slot (supports OFFHAND too)
+        ItemStack currentEquipped = player.getEquippedStack(targetSlot);
 
         // Get cursor item
         ItemStack cursorStack = player.currentScreenHandler.getCursorStack();
 
-    // Validate that the cursor item can be equipped in this slot
-    if (!canEquipInSlot(cursorStack, targetSlot)) {
+        // Validate that the cursor item can be equipped in this slot
+        if (!canEquipInSlot(cursorStack, targetSlot)) {
             return; // Invalid item for this slot - do nothing
         }
 
-        // If creative mode, handle differently
-        if (action.isCreativeMode()) {
-            handleCreativeSwap(player, targetSlot, currentEquipped, cursorStack);
-        } else {
-            handleSurvivalSwap(player, targetSlot, currentEquipped, cursorStack);
-        }
+        // Perform the swap (same logic for both creative and survival)
+        performSwap(player, targetSlot, currentEquipped, cursorStack);
     }
 
     private static boolean canEquipInSlot(ItemStack stack, EquipmentSlot slot) {
@@ -46,47 +42,22 @@ public class MouseSwapResolver {
             return armorItem.getSlotType() == slot;
         }
 
-    // Allow any item in offhand
-    return slot == EquipmentSlot.OFFHAND;
+        // Allow any item in offhand
+        return slot == EquipmentSlot.OFFHAND;
     }
 
-    private static void handleCreativeSwap(ServerPlayerEntity player, EquipmentSlot slot,
+    private static void performSwap(ServerPlayerEntity player, EquipmentSlot slot,
             ItemStack equipped, ItemStack cursor) {
-        // In creative mode, we need to handle this like survival mode for proper cursor
-        // behavior
-        // Don't use creative-specific logic that might cause issues
-
         // Equip the new item (or clear the slot if cursor is empty)
         player.equipStack(slot, cursor.copy());
 
         // Put the previously equipped item on the cursor
         player.currentScreenHandler.setCursorStack(equipped.copy());
 
-        // Mark the cursor stack as changed to ensure client sync
+        // Force inventory sync to client
         player.currentScreenHandler.syncState();
         player.playerScreenHandler.syncState();
-
-        // Force a screen handler refresh to ensure changes are sent to client
         player.currentScreenHandler.sendContentUpdates();
-
-        // Try marking the player inventory as dirty
-        ((PlayerScreenHandler) player.playerScreenHandler).onContentChanged(player.getInventory());
-    }
-
-    private static void handleSurvivalSwap(ServerPlayerEntity player, EquipmentSlot slot,
-            ItemStack equipped, ItemStack cursor) {
-        // Standard survival swap behavior
-        player.equipStack(slot, cursor.copy());
-        player.currentScreenHandler.setCursorStack(equipped.copy());
-
-        // Force inventory sync to client - try multiple approaches
-        player.currentScreenHandler.syncState();
-        player.playerScreenHandler.syncState();
-
-        // Force a screen handler refresh to ensure changes are sent to client
-        player.currentScreenHandler.sendContentUpdates();
-
-        // Try marking the player inventory as dirty
         ((PlayerScreenHandler) player.playerScreenHandler).onContentChanged(player.getInventory());
     }
 }

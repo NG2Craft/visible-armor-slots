@@ -1,6 +1,6 @@
 package dev.quentintyr.visiblearmorslots.action.handler.resolver;
 
-import dev.quentintyr.visiblearmorslots.action.SlotAction;
+import dev.quentintyr.visiblearmorslots.network.SlotActionPayload;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ArmorItem;
 import net.minecraft.item.ItemStack;
@@ -11,12 +11,12 @@ import net.minecraft.server.network.ServerPlayerEntity;
  */
 public class HotbarSwapResolver {
 
-    public static void resolve(SlotAction action, ServerPlayerEntity player) {
-        EquipmentSlot targetSlot = action.getTargetSlot();
+    public static void resolve(SlotActionPayload action, ServerPlayerEntity player) {
+        EquipmentSlot targetSlot = action.targetSlot();
         if (targetSlot == null)
             return;
 
-        int hotbarSlot = action.getHotbarSlot();
+        int hotbarSlot = action.hotbarSlot();
         if (hotbarSlot < 0 || hotbarSlot > 8)
             return;
 
