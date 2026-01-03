@@ -23,7 +23,7 @@ public class Visiblearmorslots implements ModInitializer {
         LOGGER.info("Visible Armor Slots initializing...");
 
         // Initialize network communication
-        NetworkManager.init();
+        NetworkManager.initialize();
 
         LOGGER.info("Visible Armor Slots initialized!");
     }
