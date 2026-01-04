@@ -173,7 +173,9 @@ public class ModConfig {
             }
             cfg.rebuildExpanded();
         } catch (IOException e) {
-            // ignore: keep defaults if read fails
+            dev.quentintyr.visiblearmorslots.Visiblearmorslots.LOGGER.warn("Failed to load config file, using defaults: {}", e.getMessage());
+        } catch (Exception e) {
+            dev.quentintyr.visiblearmorslots.Visiblearmorslots.LOGGER.error("Error parsing config file, using defaults", e);
         }
     }
 
@@ -193,7 +195,8 @@ public class ModConfig {
         root.add("allowedContainers", arr);
         try (Writer writer = Files.newBufferedWriter(path)) {
             GSON.toJson(root, writer);
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            dev.quentintyr.visiblearmorslots.Visiblearmorslots.LOGGER.error("Failed to save config file: {}", e.getMessage());
         }
     }
 

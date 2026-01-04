@@ -105,7 +105,7 @@ public class HandledScreenMixin {
         if (overlay != null && overlay.isVisible()) {
             // Block mouse release events over overlay to prevent drops
             if (mouseX >= overlay.getBaseX() && mouseX < overlay.getBaseX() + 24 &&
-                    mouseY >= overlay.getBaseY() && mouseY < overlay.getBaseY() + 100) {
+                    mouseY >= overlay.getBaseY() && mouseY < overlay.getBaseY() + overlay.getColumnHeight()) {
                 cir.setReturnValue(true);
                 cir.cancel();
             }
