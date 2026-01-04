@@ -1,11 +1,11 @@
 package dev.quentintyr.visiblearmorslots.action.handler.resolver;
 
 import dev.quentintyr.visiblearmorslots.network.SlotActionPayload;
+import dev.quentintyr.visiblearmorslots.util.InventoryUtil;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ArmorItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.screen.PlayerScreenHandler;
 
 /**
  * Handles mouse click actions (left/right click swapping)
@@ -13,6 +13,10 @@ import net.minecraft.screen.PlayerScreenHandler;
 public class MouseSwapResolver {
 
     public static void resolve(SlotActionPayload action, ServerPlayerEntity player) {
+        if (player == null || player.currentScreenHandler == null) {
+            return;
+        }
+        
         EquipmentSlot targetSlot = action.targetSlot();
         if (targetSlot == null)
             return;
@@ -55,9 +59,6 @@ public class MouseSwapResolver {
         player.currentScreenHandler.setCursorStack(equipped.copy());
 
         // Force inventory sync to client
-        player.currentScreenHandler.syncState();
-        player.playerScreenHandler.syncState();
-        player.currentScreenHandler.sendContentUpdates();
-        ((PlayerScreenHandler) player.playerScreenHandler).onContentChanged(player.getInventory());
+        InventoryUtil.syncInventoryFull(player);
     }
 }

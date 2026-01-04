@@ -1,6 +1,7 @@
 package dev.quentintyr.visiblearmorslots.action.handler.resolver;
 
 import dev.quentintyr.visiblearmorslots.network.SlotActionPayload;
+import dev.quentintyr.visiblearmorslots.util.InventoryUtil;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -11,6 +12,10 @@ import net.minecraft.server.network.ServerPlayerEntity;
 public class QuickTransferResolver {
 
     public static void resolve(SlotActionPayload action, ServerPlayerEntity player) {
+        if (player == null || player.getInventory() == null) {
+            return;
+        }
+        
         EquipmentSlot targetSlot = action.targetSlot();
         if (targetSlot == null)
             return;
@@ -24,9 +29,7 @@ public class QuickTransferResolver {
             player.equipStack(targetSlot, ItemStack.EMPTY);
 
             // Force inventory sync to client
-            player.currentScreenHandler.syncState();
-            player.playerScreenHandler.syncState();
-            player.currentScreenHandler.sendContentUpdates();
+            InventoryUtil.syncInventory(player);
         }
     }
 

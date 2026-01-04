@@ -1,6 +1,7 @@
 package dev.quentintyr.visiblearmorslots.action.handler.resolver;
 
 import dev.quentintyr.visiblearmorslots.network.SlotActionPayload;
+import dev.quentintyr.visiblearmorslots.util.InventoryUtil;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ArmorItem;
 import net.minecraft.item.ItemStack;
@@ -12,6 +13,10 @@ import net.minecraft.server.network.ServerPlayerEntity;
 public class HotbarSwapResolver {
 
     public static void resolve(SlotActionPayload action, ServerPlayerEntity player) {
+        if (player == null || player.getInventory() == null) {
+            return;
+        }
+        
         EquipmentSlot targetSlot = action.targetSlot();
         if (targetSlot == null)
             return;
@@ -32,12 +37,8 @@ public class HotbarSwapResolver {
         player.equipStack(targetSlot, hotbarStack.copy());
         player.getInventory().setStack(hotbarSlot, equipped.copy());
 
-        // Force inventory sync to client - same pattern as other resolvers
-        player.currentScreenHandler.syncState();
-        player.playerScreenHandler.syncState();
-
-        // Force a screen handler refresh to ensure changes are sent to client
-        player.currentScreenHandler.sendContentUpdates();
+        // Force inventory sync to client
+        InventoryUtil.syncInventory(player);
     }
 
     private static boolean canEquipInSlot(ItemStack stack, EquipmentSlot slot) {

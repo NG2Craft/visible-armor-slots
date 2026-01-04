@@ -11,14 +11,28 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 public class NetworkManager {
 
     public static void initialize() {
-        // Register the payload type (server-side C2S)
-        PayloadTypeRegistry.playC2S().register(SlotActionPayload.ID, SlotActionPayload.CODEC);
+        try {
+            // Register the payload type (server-side C2S)
+            PayloadTypeRegistry.playC2S().register(SlotActionPayload.ID, SlotActionPayload.CODEC);
 
-        // Register receiver using the typed payload handler
-        ServerPlayNetworking.registerGlobalReceiver(SlotActionPayload.ID, (payload, context) -> {
-            context.server().execute(() -> {
-                SlotActionHandler.handleAction(payload, context.player());
+            // Register receiver using the typed payload handler
+            ServerPlayNetworking.registerGlobalReceiver(SlotActionPayload.ID, (payload, context) -> {
+                context.server().execute(() -> {
+                    try {
+                        SlotActionHandler.handleAction(payload, context.player());
+                    } catch (Exception e) {
+                        dev.quentintyr.visiblearmorslots.Visiblearmorslots.LOGGER.error(
+                            "Error handling slot action {} for player {}: {}",
+                            payload.actionType(), context.player().getName().getString(), e.getMessage(), e
+                        );
+                    }
+                });
             });
-        });
+            
+            dev.quentintyr.visiblearmorslots.Visiblearmorslots.LOGGER.info("Network handlers registered successfully");
+        } catch (Exception e) {
+            dev.quentintyr.visiblearmorslots.Visiblearmorslots.LOGGER.error("Failed to register network handlers", e);
+            throw new RuntimeException("Failed to initialize network communication", e);
+        }
     }
 }
