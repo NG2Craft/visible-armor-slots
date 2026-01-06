@@ -31,6 +31,10 @@ public class ArmorSlotsOverlay {
             "visiblearmorslots:textures/gui/extra-slots.png");
     private static final Identifier COLUMN_TEXTURE_COMPACT = Identifier.of(
             "visiblearmorslots:textures/gui/extra-slots-no-second-hand.png");
+    private static final Identifier COLUMN_TEXTURE_FULL_DARK = Identifier.of(
+            "visiblearmorslots:textures/gui/dark-extra-slots.png");
+    private static final Identifier COLUMN_TEXTURE_COMPACT_DARK = Identifier.of(
+            "visiblearmorslots:textures/gui/dark-extra-slots-no-second-hand.png");
 
     private final List<ArmorSlotWidget> armorSlots = new ArrayList<>();
     private OffhandSlotWidget offhandSlot;
@@ -74,6 +78,8 @@ public class ArmorSlotsOverlay {
         try {
             net.minecraft.screen.ScreenHandlerType<?> type = screen.getScreenHandler().getType();
             Identifier handlerId = net.minecraft.registry.Registries.SCREEN_HANDLER.getId(type);
+            dev.quentintyr.visiblearmorslots.Visiblearmorslots.LOGGER.info("Container opened: {} - Allowed: {}", 
+                handlerId, ModConfig.getInstance().isContainerAllowed(handlerId));
             if (handlerId != null && !ModConfig.getInstance().isContainerAllowed(handlerId)) {
                 visible = false;
                 return;
@@ -150,9 +156,15 @@ public class ArmorSlotsOverlay {
         // Get fresh inventory reference each frame to ensure real-time updates
         PlayerInventory inventory = player.getInventory();
 
-        // Draw column background (choose texture based on offhand visibility)
+        // Draw column background (choose texture based on offhand visibility and dark mode)
         boolean offhandShown = offhandSlot != null;
-        Identifier tex = offhandShown ? COLUMN_TEXTURE_FULL : COLUMN_TEXTURE_COMPACT;
+        ModConfig config = ModConfig.getInstance();
+        Identifier tex;
+        if (config.isDarkMode()) {
+            tex = offhandShown ? COLUMN_TEXTURE_FULL_DARK : COLUMN_TEXTURE_COMPACT_DARK;
+        } else {
+            tex = offhandShown ? COLUMN_TEXTURE_FULL : COLUMN_TEXTURE_COMPACT;
+        }
         int texHeight = offhandShown ? 100 : 78;
         drawContext.drawTexture(tex, baseX, baseY, 0, 0, 24, texHeight, 24, texHeight);
 
