@@ -28,20 +28,15 @@ public class ModConfig {
     private int marginY = 0;
     private boolean enabled = true;
     private boolean showTooltips = true;
-    private boolean autoPositioning = true; // Auto-reposition with potion effects
-    private boolean showOffhandSlot = true; // New: toggle offhand slot
-    // Raw values exactly as written in the JSON (block ids or handler ids)
+    private boolean autoPositioning = true;
+    private boolean showOffhandSlot = true; 
+    private boolean darkMode = false; 
     private Set<String> allowedContainers = new HashSet<>();
-    // Expanded set of actual screen handler ids derived from user friendly entries
-    private final Set<String> expandedAllowed = new HashSet<>();
-
-    // Mapping of common block ids -> one or more screen handler registry ids
-    private static final Map<String, List<String>> BLOCK_TO_HANDLERS = createBlockToHandlerMappings();
 
     private static final String FILE_NAME = "visiblearmorslots.json";
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-
-    // Singleton
+    private static final int CONFIG_VERSION = 2; 
+    
     private static ModConfig instance;
 
     public static ModConfig getInstance() {
@@ -52,21 +47,17 @@ public class ModConfig {
     }
 
     private ModConfig() {
-        // User-friendly defaults (block names) instead of opaque screen handler ids
+        // Default screen handler IDs to show overlay on
         Collections.addAll(allowedContainers,
-                "minecraft:crafting_table",
+                "minecraft:crafting",
                 "minecraft:anvil",
-                "minecraft:enchanting_table",
-                "minecraft:chest",
-                "minecraft:trapped_chest",
-                "minecraft:barrel",
+                "minecraft:enchantment",
+                "minecraft:generic_9x3",
+                "minecraft:generic_9x6",
                 "minecraft:grindstone",
-                "minecraft:smithing_table",
-                "minecraft:shulker_box");
-        rebuildExpanded();
+                "minecraft:smithing");
     }
 
-    /* ================= Getters ================= */
     public Side getPositioning() {
         return positioning;
     }
@@ -95,11 +86,14 @@ public class ModConfig {
         return showOffhandSlot;
     }
 
+    public boolean isDarkMode() {
+        return darkMode;
+    }
+
     public Set<String> getAllowedContainers() {
         return Collections.unmodifiableSet(allowedContainers);
     }
 
-    /* ================= Setters ================= */
     public void setPositioning(Side positioning) {
         this.positioning = positioning;
     }
@@ -120,6 +114,10 @@ public class ModConfig {
         this.showTooltips = showTooltips;
     }
 
+    public void setDarkMode(boolean darkMode) {
+        this.darkMode = darkMode;
+    }
+
     public void setAutoPositioning(boolean autoPositioning) {
         this.autoPositioning = autoPositioning;
     }
@@ -131,11 +129,49 @@ public class ModConfig {
     public boolean isContainerAllowed(Identifier id) {
         if (allowedContainers.isEmpty())
             return true; // empty means allow all
-        // Direct match (user already put handler id) or expanded match
-        return allowedContainers.contains(id.toString()) || expandedAllowed.contains(id.toString());
+        return allowedContainers.contains(id.toString());
+    }
+    
+    /**
+     * Check if a container is in the allowed list (not checking if empty = allow all)
+     */
+    public boolean isContainerInList(String containerId) {
+        return allowedContainers.contains(containerId);
+    }
+    
+    /**
+     * Enable or disable a specific container
+     */
+    public void setContainerEnabled(String containerId, boolean enabled) {
+        if (enabled) {
+            allowedContainers.add(containerId);
+        } else {
+            allowedContainers.remove(containerId);
+        }
+    }
+    
+    /**
+     * Reset containers to default list
+     */
+    public void resetContainersToDefault() {
+        allowedContainers.clear();
+        Collections.addAll(allowedContainers,
+                "minecraft:crafting",
+                "minecraft:anvil",
+                "minecraft:enchantment",
+                "minecraft:generic_9x3",
+                "minecraft:generic_9x6",
+                "minecraft:grindstone",
+                "minecraft:smithing");
+    }
+    
+    /**
+     * Get the config file path for debugging
+     */
+    public static Path getConfigPath() {
+        return FabricLoader.getInstance().getConfigDir().resolve(FILE_NAME);
     }
 
-    /* ================= Persistence ================= */
     public static void load() {
         Path path = FabricLoader.getInstance().getConfigDir().resolve(FILE_NAME);
         if (!Files.exists(path)) {
@@ -147,6 +183,15 @@ public class ModConfig {
             JsonObject root = GSON.fromJson(reader, JsonObject.class);
             if (root == null)
                 return;
+                
+            // Check config version
+            int version = root.has("configVersion") ? root.get("configVersion").getAsInt() : 1;
+            if (version < CONFIG_VERSION) {
+                dev.quentintyr.visiblearmorslots.Visiblearmorslots.LOGGER.info(
+                    "Updating config from version {} to {}", version, CONFIG_VERSION
+                );
+            }
+            
             ModConfig cfg = getInstance();
             if (root.has("enabled"))
                 cfg.enabled = root.get("enabled").getAsBoolean();
@@ -154,6 +199,8 @@ public class ModConfig {
                 cfg.showOffhandSlot = root.get("showOffhandSlot").getAsBoolean();
             if (root.has("showTooltips"))
                 cfg.showTooltips = root.get("showTooltips").getAsBoolean();
+            if (root.has("darkMode"))
+                cfg.darkMode = root.get("darkMode").getAsBoolean();
             if (root.has("autoPositioning"))
                 cfg.autoPositioning = root.get("autoPositioning").getAsBoolean();
             if (root.has("positioning")) {
@@ -171,7 +218,6 @@ public class ModConfig {
                 JsonArray arr = root.getAsJsonArray("allowedContainers");
                 arr.forEach(e -> cfg.allowedContainers.add(e.getAsString()));
             }
-            cfg.rebuildExpanded();
         } catch (IOException e) {
             dev.quentintyr.visiblearmorslots.Visiblearmorslots.LOGGER.warn("Failed to load config file, using defaults: {}", e.getMessage());
         } catch (Exception e) {
@@ -183,56 +229,33 @@ public class ModConfig {
         Path path = FabricLoader.getInstance().getConfigDir().resolve(FILE_NAME);
         JsonObject root = new JsonObject();
         ModConfig cfg = getInstance();
+        
+        root.addProperty("configVersion", CONFIG_VERSION);
+        
+        // Core settings
+        root.addProperty("_comment_1", "=== Core Settings ===");
         root.addProperty("enabled", cfg.enabled);
-        root.addProperty("showOffhandSlot", cfg.showOffhandSlot);
         root.addProperty("showTooltips", cfg.showTooltips);
-        root.addProperty("autoPositioning", cfg.autoPositioning);
+        
+        // Display settings
+        root.addProperty("_comment_2", "=== Display Settings ===");
         root.addProperty("positioning", cfg.positioning.name());
         root.addProperty("marginX", cfg.marginX);
         root.addProperty("marginY", cfg.marginY);
+        root.addProperty("autoPositioning", cfg.autoPositioning);
+        root.addProperty("showOffhandSlot", cfg.showOffhandSlot);
+        root.addProperty("darkMode", cfg.darkMode);
+        
+        // Container whitelist
+        root.addProperty("_comment_3", "=== Container Whitelist (leave empty to allow all) ===");
         JsonArray arr = new JsonArray();
         cfg.allowedContainers.forEach(arr::add);
         root.add("allowedContainers", arr);
+        
         try (Writer writer = Files.newBufferedWriter(path)) {
             GSON.toJson(root, writer);
         } catch (IOException e) {
             dev.quentintyr.visiblearmorslots.Visiblearmorslots.LOGGER.error("Failed to save config file: {}", e.getMessage());
-        }
-    }
-
-    private static Map<String, List<String>> createBlockToHandlerMappings() {
-        Map<String, List<String>> map = new HashMap<>();
-        map.put("minecraft:crafting_table", List.of("minecraft:crafting"));
-        map.put("minecraft:enchanting_table", List.of("minecraft:enchantment"));
-        map.put("minecraft:smithing_table", List.of("minecraft:smithing"));
-        map.put("minecraft:cartography_table", List.of("minecraft:cartography"));
-        map.put("minecraft:stonecutter", List.of("minecraft:stonecutter"));
-        map.put("minecraft:grindstone", List.of("minecraft:grindstone"));
-        map.put("minecraft:loom", List.of("minecraft:loom"));
-        map.put("minecraft:brewing_stand", List.of("minecraft:brewing_stand"));
-        map.put("minecraft:hopper", List.of("minecraft:hopper"));
-        map.put("minecraft:furnace", List.of("minecraft:furnace"));
-        map.put("minecraft:blast_furnace", List.of("minecraft:blast_furnace"));
-        map.put("minecraft:smoker", List.of("minecraft:smoker"));
-        map.put("minecraft:anvil", List.of("minecraft:anvil"));
-        map.put("minecraft:shulker_box", List.of("minecraft:shulker_box"));
-        // Chest-like legacy names -> multiple generic sizes
-        map.put("minecraft:chest", List.of("minecraft:generic_9x3", "minecraft:generic_9x6"));
-        map.put("minecraft:trapped_chest", List.of("minecraft:generic_9x3", "minecraft:generic_9x6"));
-        map.put("minecraft:barrel", List.of("minecraft:generic_9x3"));
-        return map;
-    }
-
-    private void rebuildExpanded() {
-        expandedAllowed.clear();
-        for (String raw : allowedContainers) {
-            // Always allow the raw string itself (covers direct handler ids and modded
-            // ones)
-            expandedAllowed.add(raw);
-            List<String> mapped = BLOCK_TO_HANDLERS.get(raw);
-            if (mapped != null) {
-                expandedAllowed.addAll(mapped);
-            }
         }
     }
 }
