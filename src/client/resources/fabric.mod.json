@@ -20,6 +20,9 @@
 		],
 		"client": [
 			"dev.quentintyr.visiblearmorslots.VisiblearmorslotsClient"
+		],
+		"modmenu": [
+			"dev.quentintyr.visiblearmorslots.integration.ModMenuIntegration"
 		]
 	},
 	"mixins": [
